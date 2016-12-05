@@ -175,20 +175,21 @@ public class Main2 {
 			is.setSimilarity(new LMSimilarity() {
 				@Override
 				protected float score(BasicStats stats, float freq, float docLen) {
-					return (float)Math.log((double)(1.0f + (1.0f-parameter) * (freq/docLen) +
-							parameter * (freq/stats.getTotalTermFreq())));
+					return (float)Math.log((double)(1.0f + parameter * (freq/docLen) +
+							(1.0f-parameter) * (freq/stats.getTotalTermFreq())));
 				}
 				@Override
 				public String getName() {
 					return "Jelinek-Mercer";
 				}
 			});
-		} else {
+		} else {//donald trump @ 2011-2013
 			is.setSimilarity(new LMSimilarity() {
 				@Override
 				protected float score(BasicStats stats, float freq, float docLen) {
-					return (float)Math.log((double)(1.0f+(freq+parameter*(freq/stats.getTotalTermFreq()))/
-							(docLen+parameter)));
+//					return (float)Math.log((double)(1.0f+(freq+parameter*(freq/stats.getTotalTermFreq()))/
+//							(docLen+parameter)));
+					return (float)Math.log(1f+(freq+parameter*(freq/stats.getTotalTermFreq()))/(docLen+parameter));
 				}
 				@Override
 				public String getName() {
