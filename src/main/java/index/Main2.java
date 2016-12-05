@@ -187,7 +187,7 @@ public class Main2 {
 			is.setSimilarity(new LMSimilarity() {
 				@Override
 				protected float score(BasicStats stats, float freq, float docLen) {
-					return (float)Math.log((double)((freq+parameter*(freq/stats.getTotalTermFreq()))/
+					return (float)Math.log((double)(1.0f+(freq+parameter*(freq/stats.getTotalTermFreq()))/
 							(docLen+parameter)));
 				}
 				@Override
