@@ -128,19 +128,22 @@ public class Main1 {
 
 			}
 
-			System.out.println("Creating files");
+			System.out.println("Creating atemporal file");
 			List<String> lines = createFile(atemporalList, is, topics);			
 			Files.write(Paths.get(outFileBase + "atemporal.txt"), lines, Charset.forName("UTF-8"), StandardOpenOption.TRUNCATE_EXISTING,
 					StandardOpenOption.CREATE);
 			
+			System.out.println("Creating future file");
 			lines = createFile(recentList, is, topics);			
 			Files.write(Paths.get(outFileBase + "future.txt"), lines, Charset.forName("UTF-8"), StandardOpenOption.TRUNCATE_EXISTING,
 					StandardOpenOption.CREATE);
 			
+			System.out.println("Creating recent file");
 			lines = createFile(futureList, is, topics);			
 			Files.write(Paths.get(outFileBase + "recent.txt"), lines, Charset.forName("UTF-8"), StandardOpenOption.TRUNCATE_EXISTING,
 					StandardOpenOption.CREATE);
 			
+			System.out.println("Creating past file");
 			lines = createFile(pastList, is, topics);			
 			Files.write(Paths.get(outFileBase + "past.txt"), lines, Charset.forName("UTF-8"), StandardOpenOption.TRUNCATE_EXISTING,
 					StandardOpenOption.CREATE);
