@@ -8,6 +8,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.nio.file.Paths;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Locale;
 import java.util.Scanner;
 
 import javax.xml.namespace.QName;
@@ -22,7 +25,8 @@ import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.IntPoint;
-import org.apache.lucene.document.LongPoint;
+import org.apache.lucene.document.StoredField;
+import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
@@ -70,6 +74,7 @@ public class Main2 {
 			IndexWriterConfig cfg = new IndexWriterConfig(analyzer);
 			cfg.setOpenMode(OpenMode.CREATE);
 			writer = new IndexWriter(indexDir, cfg);
+			DateFormat df = new SimpleDateFormat("yyyy-mm-dd", Locale.ENGLISH);
 		
 		//----------------------------
 		// Read the data
@@ -143,7 +148,7 @@ public class Main2 {
 								System.err.println("Some tag is missing here");
 							}
 							addDoc(title.toString(), id.toString(), content.toString(),
-//								Long.parseLong(date.toString().trim().substring(0, 4)));
+									df.parse(date.toString().trim()).getTime(),
 									Integer.parseInt(date.toString().trim().substring(0, 4)));
 							title = new StringBuilder();
 							id = new StringBuilder();
@@ -157,6 +162,11 @@ public class Main2 {
 				} catch (IOException e) {
 					e.printStackTrace();
 				} catch (XMLStreamException e) {
+					e.printStackTrace();
+				} catch (NumberFormatException e) {
+					e.printStackTrace();
+				} catch (java.text.ParseException e) {
+					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 			}
@@ -238,6 +248,7 @@ public class Main2 {
 				}
 				System.out.println(is.doc(doc.doc).getField("title").stringValue());
 				System.out.println(is.doc(doc.doc).getField("id").stringValue());
+				System.out.println(is.explain(q, doc.doc).getValue());
 			}
 			
 			System.out.println("Type in your query: ");
@@ -254,13 +265,13 @@ public class Main2 {
 	}
 	
 	
-	private static void addDoc(String title, String id, String content, long date) throws IOException {
+	private static void addDoc(String title, String id, String content, long date, int year) throws IOException {
 		  Document doc = new Document();
 		  doc.add(new TextField("title", title, Store.YES));
-		  doc.add(new TextField("id", id, Store.YES));
+		  doc.add(new StringField("id", id.trim(), Store.YES));
 		  doc.add(new TextField("content", content, Store.YES));
-//		  doc.add(new LongPoint("date", date));
-		  doc.add(new IntPoint("year", (int)date));
+		  doc.add(new StoredField("date", date));
+		  doc.add(new IntPoint("year", year));
 		  writer.addDocument(doc);
 	}
 

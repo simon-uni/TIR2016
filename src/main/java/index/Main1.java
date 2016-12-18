@@ -2,25 +2,31 @@ package index;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-import javax.management.RuntimeErrorException;
-
+import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.Term;
+import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.WildcardQuery;
+import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.jsoup.Jsoup;
@@ -61,6 +67,7 @@ public class Main1 {
 		String qrelFile = args[0];
 		String dir = args[1];
 		String queryFile = args[2];
+		String outFile = args[3];
 		
 		
 		try (BufferedReader br = new BufferedReader(new FileReader(qrelFile))) {
@@ -69,6 +76,7 @@ public class Main1 {
 			Document doc = Jsoup.parse(new File(queryFile), "UTF-8", "");
 			DateFormat df = new SimpleDateFormat("MMM dd, yyyy z", Locale.ENGLISH);
 			
+			System.out.println("Read topics");
 			for (Element e : doc.getElementsByTag("topic")) {
 				String id = e.getElementsByTag("id").get(0).text();
 				String title = e.getElementsByTag("title").get(0).text();
@@ -81,25 +89,27 @@ public class Main1 {
 				Topic t = new Topic(id, title, desc, atemporal, future, recent, past, time);
 				topics.put(Integer.parseInt(id), t);
 			}
-			
+
 			Directory indexDir = FSDirectory.open(Paths.get(new File(dir).toURI()));
 			IndexReader rdr = DirectoryReader.open(indexDir);
 			IndexSearcher is = new IndexSearcher(rdr);
-			
+
 			List<QDRel> atemporalList = new ArrayList<QDRel>();
 			List<QDRel> pastList = new ArrayList<QDRel>();
 			List<QDRel> recentList = new ArrayList<QDRel>();
 			List<QDRel> futureList = new ArrayList<QDRel>();
-		    String line;
-		    while ((line = br.readLine()) != null) {
-		    	
-		    	String qID = line.split(" ")[0];
-		    	int query = Integer.parseInt(qID.substring(0, 2));
-		    	String document = line.split(" ")[1];
-		    	String rel = line.split(" ")[2];
-		    	int relevance = Integer.parseInt(rel.substring(1, 1));
+			String line;
+			System.out.println("Read QRels");
+			while ((line = br.readLine()) != null) {
+				if (line.length() == 0) continue;
 				
-		    	switch (qID.substring(3, 3)) {
+				String qID = line.split(" ")[0];
+				int query = Integer.parseInt(qID.substring(0, 3));
+				String document = line.split(" ")[1];
+				String rel = line.split(" ")[2];
+				int relevance = Integer.parseInt(rel.substring(1, 2));
+
+				switch (qID.substring(3, 4)) {
 				case "a":
 					atemporalList.add(new QDRel(query, relevance, document));
 					break;
@@ -115,36 +125,57 @@ public class Main1 {
 				default:
 					throw new RuntimeException("Parsing went wrong ;(");
 				}
-		    	
-		    }
-		    
-		    
+
+			}
+
+			List<String> lines = createFile(atemporalList, is, topics);
+			
+			System.out.println("Create file");
+			Files.write(Paths.get(outFile), lines, Charset.forName("UTF-8"), StandardOpenOption.TRUNCATE_EXISTING,
+					StandardOpenOption.CREATE);
+
 		} catch (IOException e) {
 			e.printStackTrace();
 		} catch (ParseException e1) {
 			e1.printStackTrace();
 		}
-
 	}
 
-	
-	private List<String> createFile(List<QDRel> qrels, IndexSearcher is, Map<Integer, Topic> topics) {
+	private static List<String> createFile(List<QDRel> qrels, IndexSearcher is, Map<Integer, Topic> topics) {
 		List<String> lines = new ArrayList<String>();
-		
-		for (QDRel qrel : qrels) {
-			StringBuilder outLine = new StringBuilder();
-			
-			outLine.append(qrel.relevance + " qid:" + qrel.query + " ");
-			
-			//First Feature 
-			
-			
-			//Second Feature: Time Distance
-			
-			
-			lines.add(outLine.toString());
+		QueryParser parser = new QueryParser("content", new StandardAnalyzer());
+
+		try {
+			for (QDRel qrel : qrels) {
+//				System.out.println(qrel.document);
+				StringBuilder outLine = new StringBuilder();
+
+				outLine.append(qrel.relevance + " qid:" + qrel.query + " ");
+
+				// First Feature
+				TermQuery idQ = new TermQuery(new Term("id", qrel.document.trim()));
+				TopDocs top = is.search(idQ, 2);
+				if (top.totalHits != 1) {
+//					System.out.println(top.totalHits);
+//					throw new RuntimeException("Not the desired document could be fetched");
+					System.err.println(qrel.document + " could not be fetched");
+					continue;
+				}
+				Query q = parser.parse(topics.get(qrel.query).title);
+				outLine.append("1:" + is.explain(q, top.scoreDocs[0].doc).getValue() + " ");
+
+				// Second Feature: Time Distance
+				outLine.append("2:" + (Long.parseLong(is.doc(top.scoreDocs[0].doc).get("date")) -
+						topics.get(qrel.query).time));
+
+				lines.add(outLine.toString());
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		} catch (org.apache.lucene.queryparser.classic.ParseException e) {
+			e.printStackTrace();
 		}
-		
-		return null;
+
+		return lines;
 	}
 }
