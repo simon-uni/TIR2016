@@ -67,7 +67,7 @@ public class Main1 {
 		String qrelFile = args[0];
 		String dir = args[1];
 		String queryFile = args[2];
-		String outFile = args[3];
+		String outFileBase = args[3];
 		
 		
 		try (BufferedReader br = new BufferedReader(new FileReader(qrelFile))) {
@@ -128,10 +128,21 @@ public class Main1 {
 
 			}
 
-			List<String> lines = createFile(atemporalList, is, topics);
+			System.out.println("Creating files");
+			List<String> lines = createFile(atemporalList, is, topics);			
+			Files.write(Paths.get(outFileBase + "atemporal.txt"), lines, Charset.forName("UTF-8"), StandardOpenOption.TRUNCATE_EXISTING,
+					StandardOpenOption.CREATE);
 			
-			System.out.println("Create file");
-			Files.write(Paths.get(outFile), lines, Charset.forName("UTF-8"), StandardOpenOption.TRUNCATE_EXISTING,
+			lines = createFile(recentList, is, topics);			
+			Files.write(Paths.get(outFileBase + "future.txt"), lines, Charset.forName("UTF-8"), StandardOpenOption.TRUNCATE_EXISTING,
+					StandardOpenOption.CREATE);
+			
+			lines = createFile(futureList, is, topics);			
+			Files.write(Paths.get(outFileBase + "recent.txt"), lines, Charset.forName("UTF-8"), StandardOpenOption.TRUNCATE_EXISTING,
+					StandardOpenOption.CREATE);
+			
+			lines = createFile(pastList, is, topics);			
+			Files.write(Paths.get(outFileBase + "past.txt"), lines, Charset.forName("UTF-8"), StandardOpenOption.TRUNCATE_EXISTING,
 					StandardOpenOption.CREATE);
 
 		} catch (IOException e) {
