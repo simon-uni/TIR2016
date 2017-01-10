@@ -131,19 +131,31 @@ public class BonusMain {
 			// ---------------------------------------------------------------
 			// 1. Step: Query
 			// ---------------------------------------------------------------
-
+			QueryParser parser = new QueryParser("content", new StandardAnalyzer());
+			try {
+				Query q = parser.parse(topics.get(Integer.parseInt(qNumber)).title);
+			} catch (NumberFormatException e1) {
+				e1.printStackTrace();
+			} catch (org.apache.lucene.queryparser.classic.ParseException e1) {
+				e1.printStackTrace();
+			}
+			
 			
 			// ---------------------------------------------------------------
 			// 2. Step: Build the Word Embedding Model
 			// ---------------------------------------------------------------
 			
+			
 			// ---------------------------------------------------------------
 			// 3. Step: Expand the query
 			// ---------------------------------------------------------------
 			
+			
 			// ---------------------------------------------------------------
 			// 4. Step: Compute Precision at 5, 10
 			// ---------------------------------------------------------------
+			
+			
 			
 		} catch (IOException e) {
 			e.printStackTrace();
