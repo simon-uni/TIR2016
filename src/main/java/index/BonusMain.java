@@ -104,33 +104,46 @@ public class BonusMain {
 			IndexReader rdr = DirectoryReader.open(indexDirec);
 			IndexSearcher is = new IndexSearcher(rdr);
 
-			List<QDRel> atemporalList = new ArrayList<QDRel>();
-			List<QDRel> pastList = new ArrayList<QDRel>();
-			List<QDRel> recentList = new ArrayList<QDRel>();
-			List<QDRel> futureList = new ArrayList<QDRel>();
+			Map<Integer, Map<String, QDRel>> atemporalList = new HashMap<Integer, Map<String, QDRel>>();
+			Map<Integer, Map<String, QDRel>> pastList = new HashMap<Integer, Map<String, QDRel>>();
+			Map<Integer, Map<String, QDRel>> recentList = new HashMap<Integer, Map<String, QDRel>>();
+			Map<Integer, Map<String, QDRel>> futureList = new HashMap<Integer, Map<String, QDRel>>();
 			String line;
 			System.out.println("Read QRels");
 			while ((line = br.readLine()) != null) {
 				if (line.length() == 0) continue;
 				
 				String qID = line.split(" ")[0];
+				int queryNumber = Integer.parseInt(qID.substring(0, 3));
 				int query = Integer.parseInt(qID.substring(0, 3));
-				String document = line.split(" ")[1];
+				String document = line.split(" ")[1].trim();
 				String rel = line.split(" ")[2];
 				int relevance = Integer.parseInt(rel.substring(1, 2));
-
+				
 				switch (qID.substring(3, 4)) {
 				case "a":
-					atemporalList.add(new QDRel(query, relevance, document));
+					if (!atemporalList.containsKey(queryNumber)) {
+						atemporalList.put(queryNumber, new HashMap<String, QDRel>());
+					}
+					atemporalList.get(queryNumber).put(document, new QDRel(query, relevance, document));
 					break;
 				case "p":
-					pastList.add(new QDRel(query, relevance, document));
+					if (!pastList.containsKey(queryNumber)) {
+						pastList.put(queryNumber, new HashMap<String, QDRel>());
+					}
+					pastList.get(queryNumber).put(document, new QDRel(query, relevance, document));
 					break;
 				case "r":
-					recentList.add(new QDRel(query, relevance, document));
+					if (!recentList.containsKey(queryNumber)) {
+						recentList.put(queryNumber, new HashMap<String, QDRel>());
+					}
+					recentList.get(queryNumber).put(document, new QDRel(query, relevance, document));
 					break;
 				case "f":
-					futureList.add(new QDRel(query, relevance, document));
+					if (!futureList.containsKey(queryNumber)) {
+						futureList.put(queryNumber, new HashMap<String, QDRel>());
+					}
+					futureList.get(queryNumber).put(document, new QDRel(query, relevance, document));
 					break;
 				default:
 					throw new RuntimeException("Parsing went wrong ;(");
@@ -214,9 +227,51 @@ public class BonusMain {
 			// ---------------------------------------------------------------
 			// 4. Step: Compute Precision at 5, 10
 			// ---------------------------------------------------------------
+			    float atemporalPrec = 0, pastPrec = 0, recentPrec = 0, futurePrec = 0,
+			    		atemporal5Prec = 0, past5Prec = 0, recent5Prec = 0, future5Prec = 0;
+			    int i = 0;
 			    top = is.search(boolQuery.build(), 10);
-			    
+			    for (ScoreDoc d : top.scoreDocs) {
+			    	i++;
+			    	if (atemporalList.get(Integer.parseInt(qNumber)).containsKey(
+			    			is.doc(d.doc).get("id")) &&
+			    			atemporalList.get(Integer.parseInt(qNumber)).get(
+			    					is.doc(d.doc).get("id")).relevance > 0) {
+			    		atemporalPrec++;
+			    		if (i < 6) atemporal5Prec++;
+			    	}
+			    	if (pastList.get(Integer.parseInt(qNumber)).containsKey(
+			    			is.doc(d.doc).get("id")) &&
+			    			pastList.get(Integer.parseInt(qNumber)).get(
+			    					is.doc(d.doc).get("id")).relevance > 0) {
+			    		pastPrec++;
+			    		if (i < 6) past5Prec++;
+			    	}
+			    	if (recentList.get(Integer.parseInt(qNumber)).containsKey(
+			    			is.doc(d.doc).get("id")) &&
+			    			recentList.get(Integer.parseInt(qNumber)).get(
+			    					is.doc(d.doc).get("id")).relevance > 0) {
+			    		recentPrec++;
+			    		if (i < 6) recent5Prec++;
+			    	}
+			    	if (futureList.get(Integer.parseInt(qNumber)).containsKey(
+			    			is.doc(d.doc).get("id")) &&
+			    			futureList.get(Integer.parseInt(qNumber)).get(
+			    					is.doc(d.doc).get("id")).relevance > 0) {
+			    		futurePrec++;
+			    		if (i < 6) future5Prec++;
+			    	}
+			    }
 			
+			    System.out.println("Atemporal@5: " + atemporal5Prec / 5.0 +
+			    		"\\t Atemporal@10: " + atemporalPrec / 10.0);
+			    System.out.println("Past@5: " + past5Prec / 5.0 +
+			    		"\\t Past@10: " + pastPrec / 10.0);
+			    System.out.println("Recent@5: " + recent5Prec / 5.0 +
+			    		"\\t Recent@10: " + recentPrec / 10.0);
+			    System.out.println("Future@5: " + future5Prec / 5.0 +
+			    		"\\t Future@10: " + futurePrec / 10.0);
+			    
 			} catch (NumberFormatException e1) {
 				e1.printStackTrace();
 			} catch (org.apache.lucene.queryparser.classic.ParseException e1) {
