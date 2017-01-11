@@ -86,7 +86,7 @@ public class BonusMain {
 			Document doc = Jsoup.parse(new File(queryFile), "UTF-8", "");
 			DateFormat df = new SimpleDateFormat("MMM dd, yyyy z", Locale.ENGLISH);
 			
-			System.out.println("Read topics");
+			System.out.println("Read Topics");
 			for (Element e : doc.getElementsByTag("topic")) {
 				String id = e.getElementsByTag("id").get(0).text();
 				String title = e.getElementsByTag("title").get(0).text();
@@ -158,7 +158,7 @@ public class BonusMain {
 			QueryParser parser = new QueryParser("content", new StandardAnalyzer());
 			try {
 				Query q = parser.parse(topics.get(Integer.parseInt(qNumber)).title);
-				// System.out.println(q.toString());
+				System.out.println("\t\"" + q.toString("content") + "\"");
 				TopDocs top = is.search(q, 1000);
 				final List<String> lines = new ArrayList<String>();
 				for (ScoreDoc d : top.scoreDocs) {
@@ -222,17 +222,21 @@ public class BonusMain {
 			    for (String word : expand.split(" ")) {
 			    	boolQuery.add(parser.parse(word), Occur.SHOULD);
 			    }
+			    System.out.println("\t\"" + boolQuery.build().toString("content") + "\"");
 			    // System.out.println(boolQuery.build().toString());
 			
 			// ---------------------------------------------------------------
 			// 4. Step: Compute Precision at 5, 10
 			// ---------------------------------------------------------------
+			    System.out.println("4. Step: Compute Precision@5, 10");
 			    float atemporalPrec = 0, pastPrec = 0, recentPrec = 0, futurePrec = 0,
 			    		atemporal5Prec = 0, past5Prec = 0, recent5Prec = 0, future5Prec = 0;
 			    int i = 0;
 			    top = is.search(boolQuery.build(), 10);
+			    System.out.println("\tResults");
 			    for (ScoreDoc d : top.scoreDocs) {
 			    	i++;
+			    	System.out.println("\t" + i + ". " + is.doc(d.doc).get("id"));
 			    	if (atemporalList.get(Integer.parseInt(qNumber)).containsKey(
 			    			is.doc(d.doc).get("id")) &&
 			    			atemporalList.get(Integer.parseInt(qNumber)).get(
@@ -264,13 +268,13 @@ public class BonusMain {
 			    }
 			
 			    System.out.println("Atemporal@5: " + atemporal5Prec / 5.0 +
-			    		"\\t Atemporal@10: " + atemporalPrec / 10.0);
+			    		"\t Atemporal@10: " + atemporalPrec / 10.0);
 			    System.out.println("Past@5: " + past5Prec / 5.0 +
-			    		"\\t Past@10: " + pastPrec / 10.0);
+			    		"\t Past@10: " + pastPrec / 10.0);
 			    System.out.println("Recent@5: " + recent5Prec / 5.0 +
-			    		"\\t Recent@10: " + recentPrec / 10.0);
+			    		"\t Recent@10: " + recentPrec / 10.0);
 			    System.out.println("Future@5: " + future5Prec / 5.0 +
-			    		"\\t Future@10: " + futurePrec / 10.0);
+			    		"\t Future@10: " + futurePrec / 10.0);
 			    
 			} catch (NumberFormatException e1) {
 				e1.printStackTrace();
