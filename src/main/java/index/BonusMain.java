@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -12,18 +13,27 @@ import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queryparser.classic.QueryParser;
+import org.apache.lucene.queryparser.xml.builders.BooleanQueryBuilder;
+import org.apache.lucene.search.BooleanClause.Occur;
+import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
@@ -131,31 +141,87 @@ public class BonusMain {
 			// ---------------------------------------------------------------
 			// 1. Step: Query
 			// ---------------------------------------------------------------
+			System.out.println("1. Step: Query");
 			QueryParser parser = new QueryParser("content", new StandardAnalyzer());
 			try {
 				Query q = parser.parse(topics.get(Integer.parseInt(qNumber)).title);
+				// System.out.println(q.toString());
+				TopDocs top = is.search(q, 1000);
+				final List<String> lines = new ArrayList<String>();
+				for (ScoreDoc d : top.scoreDocs) {
+					String docText = is.doc(d.doc).get("content");
+					// clean it
+					List<String> sentences = new ArrayList<String>(Arrays.asList(docText.split("[.!?:]+")));
+					sentences.removeIf(new Predicate<String>() {
+						@Override
+						public boolean test(String t) {
+							return t.matches("^\\s*$");
+						}
+					});
+					sentences.forEach(new Consumer<String>() {
+						@Override
+						public void accept(String t) {
+							Pattern p = Pattern.compile("[a-zA-Z0-9]+");
+							Matcher m = p.matcher(t);
+							StringBuilder line = new StringBuilder();
+							while (m.find()) {
+							   line.append(m.group() + " ");
+							}
+							// System.out.println(line);
+							if (line.length() > 0)
+								lines.add(line.toString());
+						}
+					});
+				}
+				Files.write(Paths.get(modelDir + "/model.txt"), lines, Charset.forName("UTF-8"), StandardOpenOption.TRUNCATE_EXISTING,
+						StandardOpenOption.CREATE);
+			
+			// ---------------------------------------------------------------
+			// 2. Step: Build the Word Embedding Model
+			// ---------------------------------------------------------------
+				System.out.println("2. Step: Build Word Embedding Model");
+				String cmdarray = "" +
+						"/home/swingert/workspace/WordEmbedding/bin/python " +
+						"/home/swingert/workspace/WordEmbedding/deepLearner.py " +
+						q.toString("content")
+					;
+				// System.out.println(q.toString("content"));
+				Process p = Runtime.getRuntime().exec( cmdarray );
+
+			    BufferedReader in = new BufferedReader( new InputStreamReader(p.getErrorStream()) );
+			    while ((line = in.readLine()) != null) {
+			    	System.err.println(line);
+			    }
+			    in = new BufferedReader( new InputStreamReader(p.getInputStream()) );
+			    String expand = "";
+			    while ((line = in.readLine()) != null) {
+			    	System.out.println(line);
+			    	expand = line;
+			    }
+			    in.close();
+			
+			// ---------------------------------------------------------------
+			// 3. Step: Expand the query
+			// ---------------------------------------------------------------
+			    System.out.println("3. Step: Expand the query");
+			    BooleanQuery.Builder boolQuery = new BooleanQuery.Builder();
+			    boolQuery.add(q, Occur.SHOULD);
+			    for (String word : expand.split(" ")) {
+			    	boolQuery.add(parser.parse(word), Occur.SHOULD);
+			    }
+			    // System.out.println(boolQuery.build().toString());
+			
+			// ---------------------------------------------------------------
+			// 4. Step: Compute Precision at 5, 10
+			// ---------------------------------------------------------------
+			    top = is.search(boolQuery.build(), 10);
+			    
+			
 			} catch (NumberFormatException e1) {
 				e1.printStackTrace();
 			} catch (org.apache.lucene.queryparser.classic.ParseException e1) {
 				e1.printStackTrace();
 			}
-			
-			
-			// ---------------------------------------------------------------
-			// 2. Step: Build the Word Embedding Model
-			// ---------------------------------------------------------------
-			
-			
-			// ---------------------------------------------------------------
-			// 3. Step: Expand the query
-			// ---------------------------------------------------------------
-			
-			
-			// ---------------------------------------------------------------
-			// 4. Step: Compute Precision at 5, 10
-			// ---------------------------------------------------------------
-			
-			
 			
 		} catch (IOException e) {
 			e.printStackTrace();
