@@ -30,6 +30,9 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.queryparser.xml.builders.BooleanQueryBuilder;
 import org.apache.lucene.search.BooleanClause.Occur;
+import org.apache.lucene.search.similarities.BasicStats;
+import org.apache.lucene.search.similarities.LMDirichletSimilarity;
+import org.apache.lucene.search.similarities.LMSimilarity;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
@@ -208,7 +211,7 @@ public class BonusMain {
 			    in = new BufferedReader( new InputStreamReader(p.getInputStream()) );
 			    String expand = "";
 			    while ((line = in.readLine()) != null) {
-			    	System.out.println(line);
+			    	//System.out.println(line);
 			    	expand = line;
 			    }
 			    in.close();
@@ -220,6 +223,7 @@ public class BonusMain {
 			    BooleanQuery.Builder boolQuery = new BooleanQuery.Builder();
 			    boolQuery.add(q, Occur.SHOULD);
 			    for (String word : expand.split(" ")) {
+			    	//System.out.println(expand);
 			    	boolQuery.add(parser.parse(word), Occur.SHOULD);
 			    }
 			    System.out.println("\t\"" + boolQuery.build().toString("content") + "\"");
@@ -232,6 +236,7 @@ public class BonusMain {
 			    float atemporalPrec = 0, pastPrec = 0, recentPrec = 0, futurePrec = 0,
 			    		atemporal5Prec = 0, past5Prec = 0, recent5Prec = 0, future5Prec = 0;
 			    int i = 0;
+			    is.setSimilarity(new LMDirichletSimilarity(1.0f));
 			    top = is.search(boolQuery.build(), 10);
 			    System.out.println("\tResults");
 			    for (ScoreDoc d : top.scoreDocs) {
